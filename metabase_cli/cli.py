@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Metabase CLI - start containers, export dashboards to JSON."""
+"""Metabase CLI - start, export, configure from YAML."""
 
 import os
 import subprocess
@@ -11,7 +11,7 @@ import typer
 from metabase_cli.env import load_env
 
 app = typer.Typer(
-    help="CLI for Metabase: start containers, export dashboards to JSON",
+    help="CLI for Metabase: start, export, configure from YAML",
     name="metabase-cli",
 )
 
@@ -175,6 +175,90 @@ def cleanup_duplicates(
         email=email,
         password=password,
         collection_name=collection,
+    )
+
+
+@app.command()
+def archive(
+    name: str = typer.Argument(..., help="Dashboard name to archive"),
+    url: str | None = typer.Option(
+        None,
+        "--url",
+        "-u",
+        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
+    ),
+    repo_root: Path | None = typer.Option(
+        None,
+        "--repo",
+        "-r",
+        path_type=Path,
+        help="Path to project repo (default: cwd)",
+    ),
+) -> None:
+    """Archive a dashboard by name."""
+    root = repo_root or Path.cwd()
+    load_env(root)
+
+    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
+    email = os.environ.get("METABASE_EMAIL")
+    password = os.environ.get("METABASE_PASSWORD")
+
+    if not email or not password:
+        print(
+            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    from metabase_cli.archive import run_archive_dashboard
+
+    run_archive_dashboard(base_url=base_url, email=email, password=password, name=name)
+
+
+@app.command(name="archive-cards")
+def archive_cards(
+    database_id: int = typer.Option(
+        ...,
+        "--database-id",
+        "-d",
+        help="Archive all cards using this database (e.g. 1 for sample DB)",
+    ),
+    url: str | None = typer.Option(
+        None,
+        "--url",
+        "-u",
+        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
+    ),
+    repo_root: Path | None = typer.Option(
+        None,
+        "--repo",
+        "-r",
+        path_type=Path,
+        help="Path to project repo (default: cwd)",
+    ),
+) -> None:
+    """Archive all cards that use the given database."""
+    root = repo_root or Path.cwd()
+    load_env(root)
+
+    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
+    email = os.environ.get("METABASE_EMAIL")
+    password = os.environ.get("METABASE_PASSWORD")
+
+    if not email or not password:
+        print(
+            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    from metabase_cli.archive import run_archive_cards_by_database
+
+    run_archive_cards_by_database(
+        base_url=base_url,
+        email=email,
+        password=password,
+        database_id=database_id,
     )
 
 

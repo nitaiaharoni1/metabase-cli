@@ -19,7 +19,7 @@ uv venv
 uv pip install -e .
 ```
 
-Projects (handi, tesse, opensketch) invoke via `../metabase-cli/bin/metabase-cli` when cloned as siblings under REPOS.
+Projects (handi, tesse, opensketch) use the brew-installed `metabase-cli`; no local clone required.
 
 ## Commands
 
@@ -55,6 +55,22 @@ Archive duplicate collections, keeping the one with most items.
 
 ```bash
 metabase-cli cleanup-duplicates --collection Tesse
+```
+
+### archive
+
+Archive a dashboard by name.
+
+```bash
+metabase-cli archive "E-commerce Insights" --url http://localhost:30001
+```
+
+### archive-cards
+
+Archive all cards that use a given database (e.g. sample DB).
+
+```bash
+metabase-cli archive-cards --database-id 1 --url http://localhost:30001
 ```
 
 ## Credentials
