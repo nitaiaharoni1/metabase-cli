@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Metabase CLI - start, export, configure from YAML."""
+"""Metabase CLI - start containers, export dashboards to JSON."""
 
 import os
 import subprocess
@@ -11,7 +11,7 @@ import typer
 from metabase_cli.env import load_env
 
 app = typer.Typer(
-    help="CLI for Metabase: start, export, configure from YAML",
+    help="CLI for Metabase: start containers, add databases, configure dashboards from YAML, export to JSON/YAML",
     name="metabase-cli",
 )
 
@@ -69,7 +69,7 @@ def start(
     # Run compose
     subprocess.run(compose_cmd, shell=True, cwd=root, check=True)
     print(f"\nMetabase at http://localhost:{port}")
-    print("First run: complete setup wizard, then run 'metabase-cli export' or project metabase:config")
+    print("First run: complete setup wizard, then run 'metabase-cli export' or project metabase:apply")
 
 
 @app.command()
@@ -178,151 +178,16 @@ def cleanup_duplicates(
     )
 
 
-@app.command()
-def archive(
-    name: str = typer.Argument(..., help="Dashboard name to archive"),
-    url: str | None = typer.Option(
-        None,
-        "--url",
-        "-u",
-        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
-    ),
-    repo_root: Path | None = typer.Option(
-        None,
-        "--repo",
-        "-r",
-        path_type=Path,
-        help="Path to project repo (default: cwd)",
-    ),
-) -> None:
-    """Archive a dashboard by name."""
-    root = repo_root or Path.cwd()
-    load_env(root)
+database_app = typer.Typer(help="Database management")
 
-    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
-    email = os.environ.get("METABASE_EMAIL")
-    password = os.environ.get("METABASE_PASSWORD")
-
-    if not email or not password:
-        print(
-            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-    from metabase_cli.archive import run_archive_dashboard
-
-    run_archive_dashboard(base_url=base_url, email=email, password=password, name=name)
-
-
-@app.command(name="archive-cards")
-def archive_cards(
-    database_id: int = typer.Option(
-        ...,
-        "--database-id",
-        "-d",
-        help="Archive all cards using this database (e.g. 1 for sample DB)",
-    ),
-    url: str | None = typer.Option(
-        None,
-        "--url",
-        "-u",
-        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
-    ),
-    repo_root: Path | None = typer.Option(
-        None,
-        "--repo",
-        "-r",
-        path_type=Path,
-        help="Path to project repo (default: cwd)",
-    ),
-) -> None:
-    """Archive all cards that use the given database."""
-    root = repo_root or Path.cwd()
-    load_env(root)
-
-    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
-    email = os.environ.get("METABASE_EMAIL")
-    password = os.environ.get("METABASE_PASSWORD")
-
-    if not email or not password:
-        print(
-            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-    from metabase_cli.archive import run_archive_cards_by_database
-
-    run_archive_cards_by_database(
-        base_url=base_url,
-        email=email,
-        password=password,
-        database_id=database_id,
-    )
-
-
-@app.command(name="cleanup-duplicate-cards")
-def cleanup_duplicate_cards(
-    collection: str | None = typer.Option(
-        None,
-        "--collection",
-        "-c",
-        help="Only deduplicate cards in this collection (default: all)",
-    ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Show what would be done without making changes",
-    ),
-    url: str | None = typer.Option(
-        None,
-        "--url",
-        "-u",
-        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
-    ),
-    repo_root: Path | None = typer.Option(
-        None,
-        "--repo",
-        "-r",
-        path_type=Path,
-        help="Path to project repo (default: cwd)",
-    ),
-) -> None:
-    """Archive duplicate cards (same name), keep one, update dashboards to use it."""
-    root = repo_root or Path.cwd()
-    load_env(root)
-
-    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
-    email = os.environ.get("METABASE_EMAIL")
-    password = os.environ.get("METABASE_PASSWORD")
-
-    if not email or not password:
-        print(
-            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-    from metabase_cli.duplicate_cards import run_cleanup_duplicate_cards
-
-    run_cleanup_duplicate_cards(
-        base_url=base_url,
-        email=email,
-        password=password,
-        collection=collection,
-        dry_run=dry_run,
-    )
-
-
-@app.command(name="dashboard-add-cards")
-def dashboard_add_cards(
+@database_app.command("add")
+def database_add(
     config: Path = typer.Option(
         ...,
         "--config",
         "-f",
         path_type=Path,
-        help="Path to YAML config (cards + dashboard name)",
+        help="Path to database YAML config",
     ),
     url: str | None = typer.Option(
         None,
@@ -338,7 +203,7 @@ def dashboard_add_cards(
         help="Path to project repo (default: cwd)",
     ),
 ) -> None:
-    """Create cards from YAML and add them to an existing dashboard."""
+    """Add database to Metabase from YAML config. Use password: ${SUPABASE_DB_PASSWORD} for env expansion."""
     root = repo_root or Path.cwd()
     load_env(root)
 
@@ -358,9 +223,9 @@ def dashboard_add_cards(
         print(f"Error: config not found: {config_path}", file=sys.stderr)
         raise SystemExit(1)
 
-    from metabase_cli.add_cards import run_add_cards
+    from metabase_cli.database import run_database_add
 
-    run_add_cards(
+    run_database_add(
         base_url=base_url,
         email=email,
         password=password,
@@ -368,14 +233,13 @@ def dashboard_add_cards(
     )
 
 
-@app.command()
-def export(
-    output: Path = typer.Option(
+@database_app.command("sync")
+def database_sync(
+    name: str = typer.Option(
         ...,
-        "--output",
-        "-o",
-        path_type=Path,
-        help="Output directory (e.g. metabase-dashboards)",
+        "--name",
+        "-n",
+        help="Database name to sync (e.g. OpenSketch Analytics)",
     ),
     url: str | None = typer.Option(
         None,
@@ -391,7 +255,7 @@ def export(
         help="Path to project repo (default: cwd)",
     ),
 ) -> None:
-    """Export dashboards and cards to JSON via Metabase API."""
+    """Sync schema for an existing database (picks up new views/tables)."""
     root = repo_root or Path.cwd()
     load_env(root)
 
@@ -406,10 +270,137 @@ def export(
         )
         raise SystemExit(1)
 
-    # Import here to avoid loading heavy deps on start
-    from metabase_cli.export import run_export
+    from metabase_cli.database import run_database_sync
 
-    run_export(base_url=base_url, email=email, password=password, output=output)
+    run_database_sync(
+        base_url=base_url,
+        email=email,
+        password=password,
+        database_name=name,
+    )
+
+
+app.add_typer(database_app, name="database")
+
+
+@app.command(name="dashboards")
+def list_dashboards(
+    url: str | None = typer.Option(
+        None,
+        "--url",
+        "-u",
+        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
+    ),
+    repo_root: Path | None = typer.Option(
+        None,
+        "--repo",
+        "-r",
+        path_type=Path,
+        help="Path to project repo (default: cwd)",
+    ),
+) -> None:
+    """List all dashboards."""
+    root = repo_root or Path.cwd()
+    load_env(root)
+
+    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
+    email = os.environ.get("METABASE_EMAIL")
+    password = os.environ.get("METABASE_PASSWORD")
+
+    if not email or not password:
+        print(
+            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    from metabase_cli.api import login, req
+
+    try:
+        token = login(base_url, email, password)
+    except Exception as e:
+        print(f"Login failed: {e}", file=sys.stderr)
+        raise SystemExit(1)
+
+    dash_resp = req(base_url, token, "GET", "/api/dashboard")
+    dash_list = dash_resp if isinstance(dash_resp, list) else dash_resp.get("data", [])
+    dash_list = [d for d in dash_list if isinstance(d, dict) and "name" in d and "id" in d]
+
+    for d in sorted(dash_list, key=lambda x: x["name"]):
+        print(f"  {d['id']}: {d['name']}")
+
+
+@app.command()
+def export(
+    output: Path = typer.Option(
+        ...,
+        "--output",
+        "-o",
+        path_type=Path,
+        help="Output directory (JSON) or file path (--to-code)",
+    ),
+    to_code: bool = typer.Option(
+        False,
+        "--to-code/--no-to-code",
+        help="Export to YAML config (dashboards as code) instead of JSON",
+    ),
+    dashboards: str | None = typer.Option(
+        None,
+        "--dashboards",
+        "-d",
+        help="Comma-separated dashboard names to export (--to-code only; default: all)",
+    ),
+    database_name: str = typer.Option(
+        "OpenSketch Analytics",
+        "--database",
+        help="Database name in config (--to-code only)",
+    ),
+    url: str | None = typer.Option(
+        None,
+        "--url",
+        "-u",
+        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
+    ),
+    repo_root: Path | None = typer.Option(
+        None,
+        "--repo",
+        "-r",
+        path_type=Path,
+        help="Path to project repo (default: cwd)",
+    ),
+) -> None:
+    """Export dashboards and cards to JSON or YAML config via Metabase API."""
+    root = repo_root or Path.cwd()
+    load_env(root)
+
+    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
+    email = os.environ.get("METABASE_EMAIL")
+    password = os.environ.get("METABASE_PASSWORD")
+
+    if not email or not password:
+        print(
+            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    if to_code:
+        from metabase_cli.export import run_export_to_code
+
+        out_path = output if output.is_absolute() else root / output
+        dashboard_names = [s.strip() for s in dashboards.split(",")] if dashboards else None
+        run_export_to_code(
+            base_url=base_url,
+            email=email,
+            password=password,
+            output=out_path,
+            dashboard_names=dashboard_names,
+            database_name=database_name,
+        )
+    else:
+        from metabase_cli.export import run_export
+
+        run_export(base_url=base_url, email=email, password=password, output=output)
 
 
 if __name__ == "__main__":
