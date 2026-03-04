@@ -4,6 +4,15 @@ CLI for Metabase: start containers, export dashboards to JSON.
 
 ## Install
 
+**Homebrew** (recommended):
+
+```bash
+brew tap nitaiaharoni1/tools
+brew install metabase-cli
+```
+
+**From source** (for development):
+
 ```bash
 cd metabase-cli
 uv venv
@@ -30,6 +39,22 @@ Export dashboards and cards to JSON via Metabase API.
 ```bash
 metabase-cli export --output metabase-dashboards
 metabase-cli export -o metabase-dashboards --url http://localhost:30001
+```
+
+### configure
+
+Apply YAML config to Metabase (create/update cards and dashboards).
+
+```bash
+metabase-cli configure -f metabase-dashboards/tesse.yaml --url http://localhost:30002
+```
+
+### cleanup-duplicates
+
+Archive duplicate collections, keeping the one with most items.
+
+```bash
+metabase-cli cleanup-duplicates --collection Tesse
 ```
 
 ## Credentials
