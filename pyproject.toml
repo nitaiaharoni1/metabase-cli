@@ -1,6 +1,6 @@
 [project]
 name = "metabase-cli"
-version = "0.2.2"
+version = "0.2.3"
 description = "CLI for Metabase: start containers, export dashboards, configure from YAML"
 requires-python = ">=3.10"
 license = "MIT"
