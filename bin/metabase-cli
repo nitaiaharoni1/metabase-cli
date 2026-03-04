@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Wrapper to run metabase-cli. Invoke from project root: ../metabase-cli/bin/metabase-cli ...
+set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLI_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [[ -f "$CLI_ROOT/.venv/bin/metabase-cli" ]]; then
+  exec "$CLI_ROOT/.venv/bin/metabase-cli" "$@"
+elif command -v metabase-cli &>/dev/null; then
+  exec metabase-cli "$@"
+else
+  echo "metabase-cli not found. Run: cd $CLI_ROOT && uv venv && uv pip install -e ." >&2
+  exit 1
+fi

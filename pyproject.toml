@@ -1,0 +1,20 @@
+[project]
+name = "metabase-cli"
+version = "0.1.0"
+description = "CLI for Metabase: start containers, export dashboards to JSON"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "typer>=0.9.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+metabase-cli = "metabase_cli.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["metabase_cli"]
