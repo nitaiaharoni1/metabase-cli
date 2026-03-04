@@ -1,17 +1,17 @@
 # metabase-cli
 
-CLI for Metabase: start containers, export dashboards to JSON.
+CLI for Metabase: start containers, export dashboards to JSON, configure from YAML.
 
 ## Install
 
-**Homebrew** (recommended):
+**Homebrew (recommended):**
 
 ```bash
 brew tap nitaiaharoni1/tools
 brew install metabase-cli
 ```
 
-**From source** (for development):
+**From source:**
 
 ```bash
 cd metabase-cli
@@ -19,7 +19,7 @@ uv venv
 uv pip install -e .
 ```
 
-Projects (handi, tesse, opensketch) use the brew-installed `metabase-cli`; no local clone required.
+Projects (handi, tesse, opensketch) invoke via `../metabase-cli/bin/metabase-cli` when cloned as siblings under REPOS.
 
 ## Commands
 
@@ -32,15 +32,6 @@ metabase-cli start --compose "docker compose up -d --wait postgres metabase" --p
 metabase-cli start -c "docker compose -f docker-compose.metabase.yml up -d --wait" -p 30003
 ```
 
-### export
-
-Export dashboards and cards to JSON via Metabase API.
-
-```bash
-metabase-cli export --output metabase-dashboards
-metabase-cli export -o metabase-dashboards --url http://localhost:30001
-```
-
 ### configure
 
 Apply YAML config to Metabase (create/update cards and dashboards).
@@ -49,28 +40,31 @@ Apply YAML config to Metabase (create/update cards and dashboards).
 metabase-cli configure -f metabase-dashboards/tesse.yaml --url http://localhost:30002
 ```
 
+Config format: `collection`, `database_id` or `database` (name), `cards` (name, sql, display), `dashboards` (card_indices or cards with layout).
+
 ### cleanup-duplicates
 
 Archive duplicate collections, keeping the one with most items.
-
-```bash
-metabase-cli cleanup-duplicates --collection Tesse
-```
 
 ### archive
 
 Archive a dashboard by name.
 
 ```bash
-metabase-cli archive "E-commerce Insights" --url http://localhost:30001
+metabase-cli archive "E-commerce Insights" --url http://localhost:30002
 ```
 
-### archive-cards
+```bash
+metabase-cli cleanup-duplicates --collection Tesse --url http://localhost:30002
+```
 
-Archive all cards that use a given database (e.g. sample DB).
+### export
+
+Export dashboards and cards to JSON via Metabase API.
 
 ```bash
-metabase-cli archive-cards --database-id 1 --url http://localhost:30001
+metabase-cli export --output metabase-dashboards
+metabase-cli export -o metabase-dashboards --url http://localhost:30001
 ```
 
 ## Credentials
@@ -91,7 +85,9 @@ In handi, tesse, opensketch `package.json`:
 ```json
 {
   "metabase": "metabase-cli start -c 'docker compose up -d --wait postgres metabase' -p 30001",
-  "metabase:export": "metabase-cli export -o metabase-dashboards --url http://localhost:30001"
+  "metabase:config": "metabase-cli configure -f metabase-dashboards/tesse.yaml --url http://localhost:30002",
+  "metabase:export": "metabase-cli export -o metabase-dashboards --url http://localhost:30001",
+  "metabase:cleanup-duplicates": "metabase-cli cleanup-duplicates --collection Tesse --url http://localhost:30002"
 }
 ```
 
