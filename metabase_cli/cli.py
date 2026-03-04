@@ -262,6 +262,112 @@ def archive_cards(
     )
 
 
+@app.command(name="cleanup-duplicate-cards")
+def cleanup_duplicate_cards(
+    collection: str | None = typer.Option(
+        None,
+        "--collection",
+        "-c",
+        help="Only deduplicate cards in this collection (default: all)",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be done without making changes",
+    ),
+    url: str | None = typer.Option(
+        None,
+        "--url",
+        "-u",
+        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
+    ),
+    repo_root: Path | None = typer.Option(
+        None,
+        "--repo",
+        "-r",
+        path_type=Path,
+        help="Path to project repo (default: cwd)",
+    ),
+) -> None:
+    """Archive duplicate cards (same name), keep one, update dashboards to use it."""
+    root = repo_root or Path.cwd()
+    load_env(root)
+
+    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
+    email = os.environ.get("METABASE_EMAIL")
+    password = os.environ.get("METABASE_PASSWORD")
+
+    if not email or not password:
+        print(
+            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    from metabase_cli.duplicate_cards import run_cleanup_duplicate_cards
+
+    run_cleanup_duplicate_cards(
+        base_url=base_url,
+        email=email,
+        password=password,
+        collection=collection,
+        dry_run=dry_run,
+    )
+
+
+@app.command(name="dashboard-add-cards")
+def dashboard_add_cards(
+    config: Path = typer.Option(
+        ...,
+        "--config",
+        "-f",
+        path_type=Path,
+        help="Path to YAML config (cards + dashboard name)",
+    ),
+    url: str | None = typer.Option(
+        None,
+        "--url",
+        "-u",
+        help="Metabase URL (default: METABASE_URL env or http://localhost:3000)",
+    ),
+    repo_root: Path | None = typer.Option(
+        None,
+        "--repo",
+        "-r",
+        path_type=Path,
+        help="Path to project repo (default: cwd)",
+    ),
+) -> None:
+    """Create cards from YAML and add them to an existing dashboard."""
+    root = repo_root or Path.cwd()
+    load_env(root)
+
+    base_url = url or os.environ.get("METABASE_URL", "http://localhost:3000")
+    email = os.environ.get("METABASE_EMAIL")
+    password = os.environ.get("METABASE_PASSWORD")
+
+    if not email or not password:
+        print(
+            "Error: Set METABASE_EMAIL and METABASE_PASSWORD (e.g. in .env.metabase or ~/.metabase.env)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    config_path = config if config.is_absolute() else root / config
+    if not config_path.exists():
+        print(f"Error: config not found: {config_path}", file=sys.stderr)
+        raise SystemExit(1)
+
+    from metabase_cli.add_cards import run_add_cards
+
+    run_add_cards(
+        base_url=base_url,
+        email=email,
+        password=password,
+        config_path=config_path,
+    )
+
+
 @app.command()
 def export(
     output: Path = typer.Option(
